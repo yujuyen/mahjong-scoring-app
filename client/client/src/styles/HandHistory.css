@@ -1,0 +1,91 @@
+.hand-history {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.hand-card {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.hand-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.hand-header .winner {
+  font-weight: 700;
+  color: #2c5f2d;
+  font-size: 1.1rem;
+}
+
+.hand-header .loser {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.hand-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.hand-type {
+  font-weight: 600;
+  color: #495057;
+}
+
+.hand-stats {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.fan-count {
+  background-color: #007bff;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.points {
+  color: #28a745;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.hand-image {
+  margin: 0.75rem 0;
+}
+
+.hand-image img {
+  max-width: 100%;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.hand-notes {
+  margin: 0.75rem 0;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.hand-time {
+  text-align: right;
+  color: #6c757d;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}

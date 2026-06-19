@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
+uploads/*.jpg
+uploads/*.png
+uploads/*.gif
+*.log
+backup_*/
+mahjong-salesforce/
+salesforce-app/
+*.md.backup
