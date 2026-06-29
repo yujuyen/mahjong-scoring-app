@@ -1,8 +1,18 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import fs from 'fs';
 
-// Always use the project root for the database, not the dist folder
-const dbPath = path.resolve(process.cwd(), 'mahjong.db');
+// Use persistent disk in production, local directory in development
+const dataDir = process.env.NODE_ENV === 'production'
+  ? '/opt/render/project/src/data'
+  : process.cwd();
+
+// Ensure data directory exists
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const dbPath = path.join(dataDir, 'mahjong.db');
 
 export const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {

@@ -3,13 +3,24 @@ import { query, run, get } from '../database';
 import { analyzeHand } from '../services/scoringEngine';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 
 const router = Router();
+
+// Use persistent disk for uploads in production
+const uploadsDir = process.env.NODE_ENV === 'production'
+  ? '/opt/render/project/src/data/uploads'
+  : 'uploads';
+
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Configure multer for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
