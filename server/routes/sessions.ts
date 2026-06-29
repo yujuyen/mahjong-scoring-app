@@ -29,9 +29,10 @@ router.post('/', async (req: Request, res: Response) => {
     const sessionId = result.lastID;
 
     for (const playerName of players) {
-      await run('INSERT INTO players (session_id, name) VALUES ($1, $2)', [sessionId, playerName]);
-      await run('INSERT INTO scores (session_id, player_id) SELECT $1, id FROM players WHERE session_id = $2 AND name = $3',
-        [sessionId, sessionId, playerName]);
+      const playerResult = await run('INSERT INTO players (session_id, name) VALUES ($1, $2) RETURNING id', [sessionId, playerName]);
+      const playerId = playerResult.lastID;
+      await run('INSERT INTO scores (session_id, player_id, total_score) VALUES ($1, $2, $3)',
+        [sessionId, playerId, 0]);
     }
 
     res.json({ sessionId, message: 'Session created successfully' });

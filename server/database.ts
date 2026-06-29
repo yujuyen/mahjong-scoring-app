@@ -2,15 +2,10 @@ import { Pool } from 'pg';
 
 // Use PostgreSQL connection string from environment variable
 // In production (Render), this will be set automatically when you add a PostgreSQL database
-// In development, you can use a local PostgreSQL instance or SQLite fallback
+// In development, you can use a local PostgreSQL instance
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
-pool.on('connect', () => {
-  console.log('Connected to PostgreSQL database');
-  initDatabase();
 });
 
 pool.on('error', (err) => {
@@ -18,9 +13,16 @@ pool.on('error', (err) => {
   process.exit(-1);
 });
 
+// Initialize database tables on startup
+let dbInitialized = false;
+const dbInitPromise = initDatabase();
+
 async function initDatabase() {
+  if (dbInitialized) return;
+
   const client = await pool.connect();
   try {
+    console.log('Initializing database...');
     await client.query('BEGIN');
 
     // Sessions table
@@ -77,21 +79,25 @@ async function initDatabase() {
     `);
 
     await client.query('COMMIT');
-    console.log('Database tables initialized');
+    dbInitialized = true;
+    console.log('Database tables initialized successfully');
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error initializing database:', err);
+    throw err;
   } finally {
     client.release();
   }
 }
 
 export async function query<T>(sql: string, params: any[] = []): Promise<T[]> {
+  await dbInitPromise; // Ensure DB is initialized
   const result = await pool.query(sql, params);
   return result.rows as T[];
 }
 
 export async function run(sql: string, params: any[] = []): Promise<{ lastID: number; changes: number }> {
+  await dbInitPromise; // Ensure DB is initialized
   const result = await pool.query(sql, params);
   // PostgreSQL returns the inserted row with RETURNING clause
   // For compatibility, we return lastID from the first row if available
@@ -100,6 +106,7 @@ export async function run(sql: string, params: any[] = []): Promise<{ lastID: nu
 }
 
 export async function get<T>(sql: string, params: any[] = []): Promise<T | undefined> {
+  await dbInitPromise; // Ensure DB is initialized
   const result = await pool.query(sql, params);
   return result.rows[0] as T | undefined;
 }
