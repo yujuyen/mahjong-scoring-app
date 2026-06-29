@@ -8,6 +8,11 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+// Log connection info (hide password for security)
+const dbUrl = process.env.DATABASE_URL;
+const urlWithoutPassword = dbUrl.replace(/:([^@]+)@/, ':****@');
+console.log(`Connecting to database: ${urlWithoutPassword}`);
+
 // Use PostgreSQL connection string from environment variable
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
