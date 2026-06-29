@@ -1,8 +1,14 @@
 import { Pool } from 'pg';
 
+// Check if DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.error('ERROR: DATABASE_URL environment variable is not set!');
+  console.error('Please create a PostgreSQL database on Render and connect it to this service.');
+  console.error('See: https://render.com/docs/databases');
+  process.exit(1);
+}
+
 // Use PostgreSQL connection string from environment variable
-// In production (Render), this will be set automatically when you add a PostgreSQL database
-// In development, you can use a local PostgreSQL instance
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
