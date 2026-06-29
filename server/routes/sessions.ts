@@ -25,12 +25,12 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Session name and at least 2 players required' });
     }
 
-    const result = await run('INSERT INTO sessions (name) VALUES (?)', [name]);
+    const result = await run('INSERT INTO sessions (name) VALUES ($1) RETURNING id', [name]);
     const sessionId = result.lastID;
 
     for (const playerName of players) {
-      await run('INSERT INTO players (session_id, name) VALUES (?, ?)', [sessionId, playerName]);
-      await run('INSERT INTO scores (session_id, player_id) SELECT ?, id FROM players WHERE session_id = ? AND name = ?',
+      await run('INSERT INTO players (session_id, name) VALUES ($1, $2)', [sessionId, playerName]);
+      await run('INSERT INTO scores (session_id, player_id) SELECT $1, id FROM players WHERE session_id = $2 AND name = $3',
         [sessionId, sessionId, playerName]);
     }
 
@@ -55,12 +55,12 @@ router.get('/', async (req: Request, res: Response) => {
 // Get session by ID
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const session = await get<Session>('SELECT * FROM sessions WHERE id = ?', [req.params.id]);
+    const session = await get<Session>('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    const players = await query<Player>('SELECT * FROM players WHERE session_id = ?', [req.params.id]);
+    const players = await query<Player>('SELECT * FROM players WHERE session_id = $1', [req.params.id]);
 
     res.json({ ...session, players });
   } catch (error) {
@@ -72,7 +72,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 // End session
 router.patch('/:id/complete', async (req: Request, res: Response) => {
   try {
-    await run('UPDATE sessions SET status = ? WHERE id = ?', ['completed', req.params.id]);
+    await run('UPDATE sessions SET status = $1 WHERE id = $2', ['completed', req.params.id]);
     res.json({ message: 'Session completed' });
   } catch (error) {
     console.error('Error completing session:', error);
@@ -87,7 +87,7 @@ router.get('/:id/leaderboard', async (req: Request, res: Response) => {
       SELECT p.id, p.name, COALESCE(s.total_score, 0) as total_score
       FROM players p
       LEFT JOIN scores s ON p.id = s.player_id
-      WHERE p.session_id = ?
+      WHERE p.session_id = $1
       ORDER BY s.total_score DESC
     `, [req.params.id]);
 
@@ -102,13 +102,13 @@ router.get('/:id/leaderboard', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     // Check if session exists
-    const session = await get<Session>('SELECT * FROM sessions WHERE id = ?', [req.params.id]);
+    const session = await get<Session>('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    // SQLite will cascade delete players, hands, and scores due to ON DELETE CASCADE
-    await run('DELETE FROM sessions WHERE id = ?', [req.params.id]);
+    // PostgreSQL will cascade delete players, hands, and scores due to ON DELETE CASCADE
+    await run('DELETE FROM sessions WHERE id = $1', [req.params.id]);
 
     res.json({ message: 'Session deleted successfully' });
   } catch (error) {

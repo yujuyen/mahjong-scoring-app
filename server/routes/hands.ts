@@ -7,10 +7,9 @@ import fs from 'fs';
 
 const router = Router();
 
-// Use persistent disk for uploads in production
-const uploadsDir = process.env.NODE_ENV === 'production'
-  ? '/opt/render/project/src/data/uploads'
-  : 'uploads';
+// Upload directory (ephemeral in production - for demo purposes only)
+// For production, consider using cloud storage like Cloudinary or S3
+const uploadsDir = 'uploads';
 
 // Ensure uploads directory exists
 if (!fs.existsSync(uploadsDir)) {
@@ -97,7 +96,7 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
 
     const result = await run(
       `INSERT INTO hands (session_id, winner_id, loser_id, hand_type, fan_count, base_points, total_points, image_path, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       [
         sessionId,
         winnerId,
@@ -114,7 +113,7 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
     // Update scores for all players
     // Winner gets the total points (base for discard, base × 1.5 for self-drawn)
     await run(
-      'UPDATE scores SET total_score = total_score + ? WHERE session_id = ? AND player_id = ?',
+      'UPDATE scores SET total_score = total_score + $1 WHERE session_id = $2 AND player_id = $3',
       [analysis.totalPoints, sessionId, winnerId]
     );
 
@@ -128,7 +127,7 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
 
       // Deduct from all players except winner
       await run(
-        'UPDATE scores SET total_score = total_score - ? WHERE session_id = ? AND player_id != ?',
+        'UPDATE scores SET total_score = total_score - $1 WHERE session_id = $2 AND player_id != $3',
         [eachPays, sessionId, winnerId]
       );
     } else if (loserId) {
@@ -138,13 +137,13 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
 
       // Discarder pays half
       await run(
-        'UPDATE scores SET total_score = total_score - ? WHERE session_id = ? AND player_id = ?',
+        'UPDATE scores SET total_score = total_score - $1 WHERE session_id = $2 AND player_id = $3',
         [discarderPays, sessionId, loserId]
       );
 
       // Other 2 players (not winner, not discarder) pay quarter each
       await run(
-        'UPDATE scores SET total_score = total_score - ? WHERE session_id = ? AND player_id != ? AND player_id != ?',
+        'UPDATE scores SET total_score = total_score - $1 WHERE session_id = $2 AND player_id != $3 AND player_id != $4',
         [othersPay, sessionId, winnerId, loserId]
       );
     }
@@ -170,7 +169,7 @@ router.get('/session/:sessionId', async (req: Request, res: Response) => {
       FROM hands h
       JOIN players w ON h.winner_id = w.id
       LEFT JOIN players l ON h.loser_id = l.id
-      WHERE h.session_id = ?
+      WHERE h.session_id = $1
       ORDER BY h.created_at DESC
     `, [req.params.sessionId]);
 
@@ -184,7 +183,7 @@ router.get('/session/:sessionId', async (req: Request, res: Response) => {
 // Get hand by ID
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const hand = await get<Hand>('SELECT * FROM hands WHERE id = ?', [req.params.id]);
+    const hand = await get<Hand>('SELECT * FROM hands WHERE id = $1', [req.params.id]);
     if (!hand) {
       return res.status(404).json({ error: 'Hand not found' });
     }
@@ -201,7 +200,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const handId = req.params.id;
 
     // Get the hand details before deletion to reverse score updates
-    const hand = await get<Hand>('SELECT * FROM hands WHERE id = ?', [handId]);
+    const hand = await get<Hand>('SELECT * FROM hands WHERE id = $1', [handId]);
 
     if (!hand) {
       return res.status(404).json({ error: 'Hand not found' });
@@ -216,7 +215,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     // Deduct winner's score
     await run(
-      'UPDATE scores SET total_score = total_score - ? WHERE session_id = ? AND player_id = ?',
+      'UPDATE scores SET total_score = total_score - $1 WHERE session_id = $2 AND player_id = $3',
       [totalPoints, sessionId, winnerId]
     );
 
@@ -225,7 +224,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       // Self-drawn: refund all other players
       const eachPays = Math.round(Math.round(basePoints * 1.5) / 3);
       await run(
-        'UPDATE scores SET total_score = total_score + ? WHERE session_id = ? AND player_id != ?',
+        'UPDATE scores SET total_score = total_score + $1 WHERE session_id = $2 AND player_id != $3',
         [eachPays, sessionId, winnerId]
       );
     } else {
@@ -234,18 +233,18 @@ router.delete('/:id', async (req: Request, res: Response) => {
       const othersPay = Math.round(basePoints / 4);
 
       await run(
-        'UPDATE scores SET total_score = total_score + ? WHERE session_id = ? AND player_id = ?',
+        'UPDATE scores SET total_score = total_score + $1 WHERE session_id = $2 AND player_id = $3',
         [discarderPays, sessionId, loserId]
       );
 
       await run(
-        'UPDATE scores SET total_score = total_score + ? WHERE session_id = ? AND player_id != ? AND player_id != ?',
+        'UPDATE scores SET total_score = total_score + $1 WHERE session_id = $2 AND player_id != $3 AND player_id != $4',
         [othersPay, sessionId, winnerId, loserId]
       );
     }
 
     // Delete the hand record
-    await run('DELETE FROM hands WHERE id = ?', [handId]);
+    await run('DELETE FROM hands WHERE id = $1', [handId]);
 
     res.json({ message: 'Hand deleted successfully' });
   } catch (error) {
@@ -261,7 +260,7 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
     const { winnerId, loserId, handDescription, isSelfDrawn, isDealer, fanCount } = req.body;
 
     // Get the existing hand
-    const existingHand = await get<Hand>('SELECT * FROM hands WHERE id = ?', [handId]);
+    const existingHand = await get<Hand>('SELECT * FROM hands WHERE id = $1', [handId]);
 
     if (!existingHand) {
       return res.status(404).json({ error: 'Hand not found' });
@@ -277,7 +276,7 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
 
     // Deduct old winner's score
     await run(
-      'UPDATE scores SET total_score = total_score - ? WHERE session_id = ? AND player_id = ?',
+      'UPDATE scores SET total_score = total_score - $1 WHERE session_id = $2 AND player_id = $3',
       [oldTotalPoints, sessionId, oldWinnerId]
     );
 
@@ -285,7 +284,7 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
     if (!oldLoserId) {
       const eachPays = Math.round(Math.round(oldBasePoints * 1.5) / 3);
       await run(
-        'UPDATE scores SET total_score = total_score + ? WHERE session_id = ? AND player_id != ?',
+        'UPDATE scores SET total_score = total_score + $1 WHERE session_id = $2 AND player_id != $3',
         [eachPays, sessionId, oldWinnerId]
       );
     } else {
@@ -293,12 +292,12 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
       const othersPay = Math.round(oldBasePoints / 4);
 
       await run(
-        'UPDATE scores SET total_score = total_score + ? WHERE session_id = ? AND player_id = ?',
+        'UPDATE scores SET total_score = total_score + $1 WHERE session_id = $2 AND player_id = $3',
         [discarderPays, sessionId, oldLoserId]
       );
 
       await run(
-        'UPDATE scores SET total_score = total_score + ? WHERE session_id = ? AND player_id != ? AND player_id != ?',
+        'UPDATE scores SET total_score = total_score + $1 WHERE session_id = $2 AND player_id != $3 AND player_id != $4',
         [othersPay, sessionId, oldWinnerId, oldLoserId]
       );
     }
@@ -333,9 +332,9 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
     // Update the hand record
     await run(
       `UPDATE hands
-       SET winner_id = ?, loser_id = ?, hand_type = ?, fan_count = ?,
-           base_points = ?, total_points = ?, image_path = ?, notes = ?
-       WHERE id = ?`,
+       SET winner_id = $1, loser_id = $2, hand_type = $3, fan_count = $4,
+           base_points = $5, total_points = $6, image_path = $7, notes = $8
+       WHERE id = $9`,
       [
         winnerId || oldWinnerId,
         loserId || null,
@@ -356,7 +355,7 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
 
     // Add winner's score
     await run(
-      'UPDATE scores SET total_score = total_score + ? WHERE session_id = ? AND player_id = ?',
+      'UPDATE scores SET total_score = total_score + $1 WHERE session_id = $2 AND player_id = $3',
       [newTotalPoints, sessionId, newWinnerId]
     );
 
@@ -365,7 +364,7 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
       const totalPoints = Math.round(newBasePoints * 1.5);
       const eachPays = Math.round(totalPoints / 3);
       await run(
-        'UPDATE scores SET total_score = total_score - ? WHERE session_id = ? AND player_id != ?',
+        'UPDATE scores SET total_score = total_score - $1 WHERE session_id = $2 AND player_id != $3',
         [eachPays, sessionId, newWinnerId]
       );
     } else if (loserId) {
@@ -373,12 +372,12 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
       const othersPay = Math.round(newBasePoints / 4);
 
       await run(
-        'UPDATE scores SET total_score = total_score - ? WHERE session_id = ? AND player_id = ?',
+        'UPDATE scores SET total_score = total_score - $1 WHERE session_id = $2 AND player_id = $3',
         [discarderPays, sessionId, loserId]
       );
 
       await run(
-        'UPDATE scores SET total_score = total_score - ? WHERE session_id = ? AND player_id != ? AND player_id != ?',
+        'UPDATE scores SET total_score = total_score - $1 WHERE session_id = $2 AND player_id != $3 AND player_id != $4',
         [othersPay, sessionId, newWinnerId, loserId]
       );
     }

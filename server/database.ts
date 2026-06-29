@@ -1,44 +1,42 @@
-import sqlite3 from 'sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { Pool } from 'pg';
 
-// Use persistent disk in production, local directory in development
-const dataDir = process.env.NODE_ENV === 'production'
-  ? '/opt/render/project/src/data'
-  : process.cwd();
-
-// Ensure data directory exists
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-const dbPath = path.join(dataDir, 'mahjong.db');
-
-export const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database');
-    initDatabase();
-  }
+// Use PostgreSQL connection string from environment variable
+// In production (Render), this will be set automatically when you add a PostgreSQL database
+// In development, you can use a local PostgreSQL instance or SQLite fallback
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-function initDatabase() {
-  db.serialize(() => {
+pool.on('connect', () => {
+  console.log('Connected to PostgreSQL database');
+  initDatabase();
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
+});
+
+async function initDatabase() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
     // Sessions table
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS sessions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
-        created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         status TEXT DEFAULT 'active' CHECK(status IN ('active', 'completed'))
       )
     `);
 
     // Players table
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS players (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         session_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
@@ -46,9 +44,9 @@ function initDatabase() {
     `);
 
     // Hands table - stores individual winning hands
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS hands (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         session_id INTEGER NOT NULL,
         winner_id INTEGER NOT NULL,
         loser_id INTEGER,
@@ -58,7 +56,7 @@ function initDatabase() {
         total_points INTEGER NOT NULL,
         image_path TEXT,
         notes TEXT,
-        created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (winner_id) REFERENCES players(id),
         FOREIGN KEY (loser_id) REFERENCES players(id)
@@ -66,9 +64,9 @@ function initDatabase() {
     `);
 
     // Scores table - running totals
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS scores (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         session_id INTEGER NOT NULL,
         player_id INTEGER NOT NULL,
         total_score INTEGER DEFAULT 0,
@@ -78,33 +76,32 @@ function initDatabase() {
       )
     `);
 
+    await client.query('COMMIT');
     console.log('Database tables initialized');
-  });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error initializing database:', err);
+  } finally {
+    client.release();
+  }
 }
 
-export function query<T>(sql: string, params: any[] = []): Promise<T[]> {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows as T[]);
-    });
-  });
+export async function query<T>(sql: string, params: any[] = []): Promise<T[]> {
+  const result = await pool.query(sql, params);
+  return result.rows as T[];
 }
 
-export function run(sql: string, params: any[] = []): Promise<{ lastID: number; changes: number }> {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
+export async function run(sql: string, params: any[] = []): Promise<{ lastID: number; changes: number }> {
+  const result = await pool.query(sql, params);
+  // PostgreSQL returns the inserted row with RETURNING clause
+  // For compatibility, we return lastID from the first row if available
+  const lastID = result.rows[0]?.id || 0;
+  return { lastID, changes: result.rowCount || 0 };
 }
 
-export function get<T>(sql: string, params: any[] = []): Promise<T | undefined> {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row as T | undefined);
-    });
-  });
+export async function get<T>(sql: string, params: any[] = []): Promise<T | undefined> {
+  const result = await pool.query(sql, params);
+  return result.rows[0] as T | undefined;
 }
+
+export { pool };

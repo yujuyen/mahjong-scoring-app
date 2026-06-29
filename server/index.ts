@@ -14,11 +14,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded images from persistent disk in production
-const uploadsPath = isProduction
-  ? '/opt/render/project/src/data/uploads'
-  : path.join(__dirname, '../uploads');
-app.use('/uploads', express.static(uploadsPath));
+// Serve uploaded images (ephemeral in production)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Serve frontend in production
 if (isProduction) {
