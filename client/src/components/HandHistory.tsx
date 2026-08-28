@@ -1,6 +1,7 @@
 import type { Hand, Player } from '../services/api';
 import { handAPI } from '../services/api';
 import { formatDateTimeFull } from '../utils/dateFormat';
+import { calculatePayments } from '../utils/handCalculations';
 import '../styles/HandHistory.css';
 
 interface HandHistoryProps {
@@ -8,59 +9,6 @@ interface HandHistoryProps {
   players: Player[];
   onHandDeleted?: () => void;
   onHandEdit?: (hand: Hand) => void;
-}
-
-// Calculate payment for each player based on hand details
-function calculatePayments(hand: Hand, players: Player[]) {
-  const basePoints = hand.base_points;
-  const winnerId = hand.winner_id;
-  const discarderId = hand.loser_id;
-
-  // Determine if self-drawn (no discarder)
-  const isSelfDrawn = !discarderId;
-
-  const payments: { playerId: number; playerName: string; amount: number }[] = [];
-
-  players.forEach(player => {
-    if (player.id === winnerId) {
-      // Winner gets total points
-      payments.push({
-        playerId: player.id,
-        playerName: player.name,
-        amount: hand.total_points
-      });
-    } else if (isSelfDrawn) {
-      // Self-drawn: all losers pay equally
-      const totalPoints = Math.round(basePoints * 1.5);
-      const eachPays = Math.round(totalPoints / 3);
-      payments.push({
-        playerId: player.id,
-        playerName: player.name,
-        amount: -eachPays
-      });
-    } else {
-      // Win from discard
-      if (player.id === discarderId) {
-        // Discarder pays half
-        const discarderPays = Math.round(basePoints / 2);
-        payments.push({
-          playerId: player.id,
-          playerName: player.name,
-          amount: -discarderPays
-        });
-      } else {
-        // Others pay quarter
-        const othersPay = Math.round(basePoints / 4);
-        payments.push({
-          playerId: player.id,
-          playerName: player.name,
-          amount: -othersPay
-        });
-      }
-    }
-  });
-
-  return payments;
 }
 
 function HandHistory({ hands, players, onHandDeleted, onHandEdit }: HandHistoryProps) {
@@ -97,7 +45,7 @@ function HandHistory({ hands, players, onHandDeleted, onHandEdit }: HandHistoryP
               <span className="hand-number">Hand #{handNumber}</span>
               <span className="winner">🀄 {hand.winner_name}</span>
               <span className="hand-type-label">
-                {isSelfDrawn ? '自摸 Self-drawn' : '放銃 Discard'}
+                {isSelfDrawn ? 'Self-drawn' : 'Discard'}
               </span>
               <div className="hand-actions">
                 {onHandEdit && (
@@ -136,7 +84,7 @@ function HandHistory({ hands, players, onHandDeleted, onHandEdit }: HandHistoryP
                   >
                     <span className="player-name">
                       {payment.playerName}
-                      {isDiscarder && <span className="discarder-badge">放銃</span>}
+                      {isDiscarder && <span className="discarder-badge">Discarder</span>}
                     </span>
                     <span className={`payment-amount ${payment.amount > 0 ? 'positive' : 'negative'}`}>
                       {payment.amount > 0 ? '+' : ''}{payment.amount}

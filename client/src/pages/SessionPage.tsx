@@ -5,6 +5,7 @@ import HandEntry from '../components/HandEntry';
 import Leaderboard from '../components/Leaderboard';
 import HandHistory from '../components/HandHistory';
 import { formatDateTime } from '../utils/dateFormat';
+import { downloadSessionCsv } from '../utils/exportSession';
 import '../styles/SessionPage.css';
 
 function SessionPage() {
@@ -65,6 +66,11 @@ function SessionPage() {
     }
   };
 
+  const handleExport = () => {
+    if (!session) return;
+    downloadSessionCsv(session, hands, session.players || []);
+  };
+
   const handleDeleteSession = async () => {
     if (!id || !session) return;
 
@@ -113,6 +119,14 @@ function SessionPage() {
               </button>
             </>
           )}
+          <button
+            onClick={handleExport}
+            className="btn btn-secondary"
+            disabled={hands.length === 0}
+            title={hands.length === 0 ? 'No hands to export' : 'Export all hands to CSV'}
+          >
+            Export CSV
+          </button>
           <button onClick={handleDeleteSession} className="btn btn-danger">
             Delete Session
           </button>

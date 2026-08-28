@@ -76,7 +76,7 @@ function HandEntry({ sessionId, players, handNumber, onSubmitted, onCancel, edit
       <form onSubmit={handleSubmit} className="hand-form">
         <div className="form-row">
           <div className="form-group">
-            <label>Winner (贏家)</label>
+            <label>Winner</label>
             <select
               value={winnerId}
               onChange={(e) => setWinnerId(Number(e.target.value))}
@@ -92,12 +92,12 @@ function HandEntry({ sessionId, players, handNumber, onSubmitted, onCancel, edit
           </div>
 
           <div className="form-group">
-            <label>Discarder (放銃) - Leave empty for self-drawn</label>
+            <label>Discarder — leave empty for self-drawn</label>
             <select
               value={discarderId}
               onChange={(e) => setDiscarderId(Number(e.target.value) || '')}
             >
-              <option value="">None (Self-drawn 自摸)</option>
+              <option value="">None (self-drawn)</option>
               {players
                 .filter((p) => p.id !== winnerId)
                 .map((player) => (
@@ -110,7 +110,7 @@ function HandEntry({ sessionId, players, handNumber, onSubmitted, onCancel, edit
         </div>
 
         <div className="form-group">
-          <label>Fan Count (番)</label>
+          <label>Fan Count</label>
           <input
             type="number"
             min="1"
@@ -120,7 +120,7 @@ function HandEntry({ sessionId, players, handNumber, onSubmitted, onCancel, edit
             placeholder="Enter fan count (1-13)"
             required
           />
-          <small className="help-text">Enter fan count (1-13). Leave discarder empty for self-drawn (自摸)</small>
+          <small className="help-text">Enter fan count (1-13). Leave discarder empty for self-drawn.</small>
         </div>
 
         <div className="form-group">

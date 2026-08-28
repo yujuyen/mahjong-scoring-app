@@ -3,11 +3,32 @@
  */
 
 /**
+ * Parse a timestamp coming from the database.
+ *
+ * The DB stores timestamps in UTC using the "YYYY-MM-DD HH:MM:SS" format (no
+ * timezone marker). JavaScript's Date parses that space-separated form as
+ * *local* time, which would shift the value by the user's UTC offset. We
+ * normalize such strings to explicit UTC so they can then be displayed in the
+ * user's local timezone.
+ */
+export function parseDbDate(date: string | Date): Date {
+  if (date instanceof Date) return date;
+
+  const hasTimezone = /([zZ])|([+-]\d{2}:?\d{2})$/.test(date.trim());
+  let normalized = date.trim().replace(' ', 'T');
+  if (!hasTimezone) normalized += 'Z';
+
+  const parsed = new Date(normalized);
+  // Fall back to the raw value if normalization produced an invalid date.
+  return isNaN(parsed.getTime()) ? new Date(date) : parsed;
+}
+
+/**
  * Format a date to show date and time in user's local timezone
  * Example: "Jun 13, 2026, 11:30 AM"
  */
 export function formatDateTime(date: string | Date): string {
-  return new Date(date).toLocaleString(undefined, {
+  return parseDbDate(date).toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -21,7 +42,7 @@ export function formatDateTime(date: string | Date): string {
  * Example: "Jun 13, 2026, 11:30:45 AM"
  */
 export function formatDateTimeFull(date: string | Date): string {
-  return new Date(date).toLocaleString(undefined, {
+  return parseDbDate(date).toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -36,7 +57,7 @@ export function formatDateTimeFull(date: string | Date): string {
  * Example: "Jun 13, 2026"
  */
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString(undefined, {
+  return parseDbDate(date).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -48,7 +69,7 @@ export function formatDate(date: string | Date): string {
  */
 export function formatRelativeTime(date: string | Date): string {
   const now = new Date();
-  const then = new Date(date);
+  const then = parseDbDate(date);
   const diffMs = now.getTime() - then.getTime();
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);
@@ -77,7 +98,7 @@ export function getUserTimezone(): string {
  * Example: "Jun 13, 2026, 11:30 AM PDT"
  */
 export function formatDateTimeWithTZ(date: string | Date): string {
-  return new Date(date).toLocaleString(undefined, {
+  return parseDbDate(date).toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
