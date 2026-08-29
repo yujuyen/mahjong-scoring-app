@@ -72,11 +72,21 @@ function HandDetail({ hand, players, onEdit, onDeleted }: HandDetailProps) {
       <div className="hand-time">{formatDateTimeFull(hand.created_at)}</div>
 
       <div className="hand-detail-actions">
-        <button className="btn btn-secondary" onClick={() => onEdit(hand)}>
-          ✏️ Edit
+        <button
+          className="icon-btn"
+          onClick={() => onEdit(hand)}
+          title="Edit hand"
+          aria-label="Edit hand"
+        >
+          ✏️
         </button>
-        <button className="btn btn-danger" onClick={handleDelete}>
-          🗑️ Delete
+        <button
+          className="icon-btn"
+          onClick={handleDelete}
+          title="Delete hand"
+          aria-label="Delete hand"
+        >
+          🗑️
         </button>
       </div>
     </div>
