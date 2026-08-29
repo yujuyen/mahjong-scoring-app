@@ -4,6 +4,7 @@ import { sessionAPI, handAPI, type Session, type LeaderboardEntry, type Hand } f
 import HandEntry from '../components/HandEntry';
 import Leaderboard from '../components/Leaderboard';
 import HandHistory from '../components/HandHistory';
+import Modal from '../components/Modal';
 import { formatDateTime } from '../utils/dateFormat';
 import { downloadSessionCsv } from '../utils/exportSession';
 import '../styles/SessionPage.css';
@@ -48,6 +49,16 @@ function SessionPage() {
     setShowHandEntry(false);
     setEditingHand(null);
     loadSessionData();
+  };
+
+  const openRecordHand = () => {
+    setEditingHand(null);
+    setShowHandEntry(true);
+  };
+
+  const closeHandEntry = () => {
+    setShowHandEntry(false);
+    setEditingHand(null);
   };
 
   const handleHandEdit = (hand: Hand) => {
@@ -108,11 +119,8 @@ function SessionPage() {
         <div className="session-actions">
           {session.status === 'active' && (
             <>
-              <button
-                onClick={() => setShowHandEntry(!showHandEntry)}
-                className="btn btn-primary"
-              >
-                {showHandEntry ? 'Cancel' : '+ Record Hand'}
+              <button onClick={openRecordHand} className="btn btn-primary">
+                + Record Hand
               </button>
               <button onClick={handleCompleteSession} className="btn btn-secondary">
                 End Session
@@ -133,19 +141,22 @@ function SessionPage() {
         </div>
       </div>
 
-      {showHandEntry && session.players && (
-        <HandEntry
-          sessionId={parseInt(id!)}
-          players={session.players}
-          handNumber={hands.length + 1}
-          onSubmitted={handleHandSubmitted}
-          onCancel={() => {
-            setShowHandEntry(false);
-            setEditingHand(null);
-          }}
-          editingHand={editingHand}
-        />
-      )}
+      <Modal
+        open={showHandEntry && !!session.players}
+        onClose={closeHandEntry}
+        title={editingHand ? 'Edit Hand' : `Record Hand #${hands.length + 1}`}
+      >
+        {session.players && (
+          <HandEntry
+            sessionId={parseInt(id!)}
+            players={session.players}
+            handNumber={hands.length + 1}
+            onSubmitted={handleHandSubmitted}
+            onCancel={closeHandEntry}
+            editingHand={editingHand}
+          />
+        )}
+      </Modal>
 
       <div className="session-content">
         <div className="section">
@@ -158,8 +169,8 @@ function SessionPage() {
           <HandHistory
             hands={hands}
             players={session.players || []}
-            onHandDeleted={loadSessionData}
             onHandEdit={handleHandEdit}
+            onHandDeleted={loadSessionData}
           />
         </div>
       </div>

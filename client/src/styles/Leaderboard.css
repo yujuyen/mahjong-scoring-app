@@ -18,6 +18,19 @@
   border-bottom: 2px solid #dee2e6;
 }
 
+/* Align headers with the alignment of their column contents */
+.leaderboard th:first-child {
+  text-align: center;
+}
+
+.leaderboard th:nth-child(2) {
+  text-align: center;
+}
+
+.leaderboard th:last-child {
+  text-align: right;
+}
+
 .leaderboard td {
   padding: 0.45rem 0.5rem;
   border-bottom: 1px solid #dee2e6;
