@@ -23,6 +23,8 @@ export function buildSessionCsv(hands: Hand[], players: Player[]): string {
     'Type',
     'Discarder',
     'Fan',
+    'Base Points',
+    'Winning Points',
     ...players.map(p => p.name),
     'Notes',
   ];
@@ -40,6 +42,8 @@ export function buildSessionCsv(hands: Hand[], players: Player[]): string {
       isSelfDrawn ? 'Self-drawn' : 'Discard',
       isSelfDrawn ? '' : discarder?.name ?? '',
       hand.fan_count,
+      hand.base_points,
+      hand.total_points,
       ...players.map(p => paymentById.get(p.id) ?? 0),
       hand.notes ?? '',
     ].map(csvCell).join(',');
@@ -56,6 +60,8 @@ export function buildSessionCsv(hands: Hand[], players: Player[]): string {
     '',
     '',
     'TOTAL',
+    '',
+    '',
     '',
     '',
     '',
