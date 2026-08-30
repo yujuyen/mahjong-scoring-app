@@ -9,10 +9,9 @@ function App() {
     <Router>
       <div className="App">
         <header className="App-header">
-          <h1>🀄 Mahjong Scoring</h1>
-          <nav>
-            <Link to="/">Home</Link>
-          </nav>
+          <Link to="/" className="App-title" title="Home">
+            <h1>🀄 Mahjong Scoring</h1>
+          </Link>
         </header>
         <main>
           <Routes>

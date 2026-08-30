@@ -119,24 +119,40 @@ function SessionPage() {
         <div className="session-actions">
           {session.status === 'active' && (
             <>
-              <button onClick={openRecordHand} className="btn btn-primary">
-                + Record Hand
+              <button
+                onClick={openRecordHand}
+                className="btn btn-primary btn-icon"
+                title="Record Hand"
+                aria-label="Record Hand"
+              >
+                ➕
               </button>
-              <button onClick={handleCompleteSession} className="btn btn-secondary">
-                End Session
+              <button
+                onClick={handleCompleteSession}
+                className="btn btn-secondary btn-icon"
+                title="End Session"
+                aria-label="End Session"
+              >
+                🏁
               </button>
             </>
           )}
           <button
             onClick={handleExport}
-            className="btn btn-secondary"
+            className="btn btn-secondary btn-icon"
             disabled={hands.length === 0}
             title={hands.length === 0 ? 'No hands to export' : 'Export all hands to CSV'}
+            aria-label="Export CSV"
           >
-            Export CSV
+            📥
           </button>
-          <button onClick={handleDeleteSession} className="btn btn-danger">
-            Delete Session
+          <button
+            onClick={handleDeleteSession}
+            className="btn btn-danger btn-icon"
+            title="Delete Session"
+            aria-label="Delete Session"
+          >
+            🗑️
           </button>
         </div>
       </div>
